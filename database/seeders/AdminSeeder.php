@@ -18,6 +18,7 @@ class AdminSeeder extends Seeder
                 'name'     => 'Admin RuteStrip',
                 'email'    => 'admin@rutestrip.web.id',
                 'password' => Hash::make('admin123'),
+                'role'     => 'admin',
             ]
         );
 
