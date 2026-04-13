@@ -37,6 +37,15 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .msg-appear { animation: fadeInUp 0.3s ease-out; }
+        
+        /* Caching & Print Optimizations */
+        @media print {
+            body { height: auto !important; overflow: visible !important; background: white !important; }
+            .print-hide, header, footer, .pipeline-info, [x-show="showPipeline"] { display: none !important; }
+            main { height: auto !important; overflow: visible !important; border:none !important; padding-bottom: 2rem !important; }
+            .chat-scroll { overflow: visible !important; }
+            .msg-appear { animation: none !important; opacity: 1 !important; transform: none !important; page-break-inside: avoid; }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-slate-50" x-data="chatApp()" x-init="init()">
@@ -70,6 +79,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
                 <span>Pipeline</span>
+            </button>
+            <button onclick="window.print()" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg text-xs transition-colors print-hide">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                <span>Export PDF</span>
             </button>
             <a href="{{ route('chat.new') }}"
                class="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors">
@@ -237,17 +252,27 @@
     </main>
 
     {{-- Input Bar (fixed at bottom) --}}
-    <footer class="flex-shrink-0 bg-white border-t border-slate-200 px-4 sm:px-6 py-3">
+    <footer class="flex-shrink-0 bg-white border-t border-slate-200 px-4 sm:px-6 py-3 print-hide">
         <form @submit.prevent="sendMessage()" class="max-w-3xl mx-auto flex items-end space-x-2.5">
-            <div class="flex-1 relative">
+            <div class="flex-1 relative flex items-end bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-400 transition-all">
+                
+                {{-- Voice Input Button --}}
+                <button type="button" @click="toggleSpeech()" 
+                        :class="isListening ? 'text-red-500 animate-pulse bg-red-50' : 'text-slate-400 hover:text-emerald-500'" 
+                        class="flex-shrink-0 w-11 h-11 rounded-bl-xl flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                    </svg>
+                </button>
+
                 <textarea x-model="inputMessage"
                           @keydown.enter.prevent="if(!$event.shiftKey) sendMessage()"
                           :disabled="isLoading"
                           rows="1"
                           x-ref="chatInput"
                           @input="autoResize($event)"
-                          placeholder="Tanyakan tentang jalur pendakian..."
-                          class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 resize-none transition-all disabled:opacity-50 max-h-28"
+                          placeholder="Ketik atau gunakan suara..."
+                          class="w-full px-2 py-3 bg-transparent text-sm text-slate-700 placeholder-slate-400 focus:outline-none resize-none transition-all disabled:opacity-50 max-h-28"
                           style="min-height: 44px;"></textarea>
             </div>
             <button type="submit"
@@ -282,9 +307,50 @@
             loadingText: 'Menganalisis pertanyaan...',
             sessionId: '{{ $sessionId }}',
             showPipeline: false,
+            isListening: false,
+            recognition: null,
 
             init() {
                 this.$nextTick(() => this.scrollToBottom());
+                
+                // Initialize Web Speech API for voice input
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.lang = 'id-ID';
+                    this.recognition.interimResults = true;
+                    
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) {
+                                finalTranscript += event.results[i][0].transcript;
+                            }
+                        }
+                        if (finalTranscript) {
+                            // Append transcript
+                            this.inputMessage = (this.inputMessage + ' ' + finalTranscript).trim();
+                            this.autoResize({target: this.$refs.chatInput});
+                        }
+                    };
+                    
+                    this.recognition.onstart = () => { this.isListening = true; };
+                    this.recognition.onend = () => { this.isListening = false; };
+                    this.recognition.onerror = () => { this.isListening = false; };
+                }
+            },
+
+            toggleSpeech() {
+                if (!this.recognition) {
+                    alert('Maaf, browser Anda (atau versi gawai ini) tidak mendukung fitur Voice Input. Coba gunakan Chrome/Edge terbaru.');
+                    return;
+                }
+                
+                if (this.isListening) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                }
             },
 
             async sendMessage() {

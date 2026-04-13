@@ -17,6 +17,8 @@
 -   Menggunakan arsitektur **Retrieval-Augmented Generation (RAG)**
 -   Menjawab berdasarkan **konteks basis data rute nyata**, minimal halusinasi
 -   Respons dinamis dengan multi-turn session persistence
+-   🎙️ **Voice Input**: Pencarian berbasis suara menggunakan Web Speech API
+-   📄 **Export to PDF**: Unduh percakapan/rencana pendakian untuk akses offline
 -   Desain UI layar penuh dengan branding pendakian gunung yang imersif
 
 ### 🔍 Pencarian Semantik & Rekomendasi
@@ -252,6 +254,9 @@ Grade = (Elevasi Gain / Jarak) × 100%
 ### v2.0.0 (2026-04-14)
 
 -   🚀 **RAG Chatbot Integration**: AI Assisten cerdas dengan SBERT & Google Gemini
+-   ☁️ **Micro-services / APIs**: Cuaca Basecamp Realtime (Open-Meteo) 
+-   🎙️ Fitur Input Suara (Voice Command / Web Speech API) untuk chat
+-   📄 Fitur Export Conversation ke format PDF (Offline-mode)
 -   ✨ UI Chatbot layar penuh (full-screen) dengan micro-animations
 -   🎨 Desain ulang sistem logo dengan aset berbasis gunung/hiker
 -   💾 Session tracking untuk `ChatMessage` (DB schema baru)
