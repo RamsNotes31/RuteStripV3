@@ -26,6 +26,14 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HF_CACHE_DIR = os.path.join(PROJECT_ROOT, 'storage', 'app', 'huggingface')
+
+os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
+os.environ.setdefault('HF_HOME', HF_CACHE_DIR)
+os.environ.setdefault('SENTENCE_TRANSFORMERS_HOME', os.path.join(HF_CACHE_DIR, 'sentence-transformers'))
+os.environ.setdefault('TRANSFORMERS_CACHE', os.path.join(HF_CACHE_DIR, 'transformers'))
+
 # ==========================================
 # TEXT PREPROCESSING (same as processor.py)
 # ==========================================
@@ -74,12 +82,29 @@ def preprocess_text(text: str, remove_stopwords: bool = True) -> str:
 
 _model = None
 
+def get_local_model_path():
+    model_dir = os.path.join(
+        HF_CACHE_DIR,
+        'sentence-transformers',
+        'models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2',
+    )
+    refs_main = os.path.join(model_dir, 'refs', 'main')
+    if os.path.exists(refs_main):
+        with open(refs_main, 'r', encoding='utf-8') as ref_file:
+            revision = ref_file.read().strip()
+        snapshot = os.path.join(model_dir, 'snapshots', revision)
+        if os.path.exists(os.path.join(snapshot, 'model.safetensors')):
+            return snapshot
+    return None
+
 def get_model():
     """Load SBERT model (cached)"""
     global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+        local_model_path = get_local_model_path()
+        model_name = local_model_path or 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+        _model = SentenceTransformer(model_name)
     return _model
 
 
@@ -331,6 +356,9 @@ def generate_response_gemini(prompt: str, api_key: str, model_name: str = 'gemin
     Returns:
         Generated response text
     """
+    if not api_key:
+        return generate_response_without_gemini(prompt)
+
     try:
         import google.generativeai as genai
         
@@ -350,7 +378,27 @@ def generate_response_gemini(prompt: str, api_key: str, model_name: str = 'gemin
         return response.text
         
     except Exception as e:
-        return f"Maaf, terjadi kesalahan saat memproses: {str(e)}"
+        return generate_response_without_gemini(prompt, str(e))
+
+
+def generate_response_without_gemini(prompt: str, error: str = "") -> str:
+    """Fallback response when Gemini is not configured."""
+    suffix = f"\n\nCatatan sistem: Gemini belum aktif ({error})." if error else "\n\nCatatan sistem: Gemini belum aktif."
+    context_marker = "=== RETRIEVED CONTEXT (Data Jalur Pendakian) ==="
+    question_marker = "=== PERTANYAAN PENGGUNA ==="
+    context = prompt.split(context_marker, 1)[-1].split(question_marker, 1)[0].strip()
+
+    if not context:
+        return "Belum ada konteks jalur yang bisa digunakan untuk menjawab pertanyaan ini." + suffix
+
+    lines = []
+    for line in context.splitlines():
+        cleaned = line.strip()
+        if cleaned.startswith("[Jalur") or cleaned.startswith("Jarak:") or cleaned.startswith("Estimasi waktu") or cleaned.startswith("Grade rata-rata") or cleaned.startswith("Basecamp:") or cleaned.startswith("Skor kemiripan"):
+            lines.append(cleaned)
+
+    summary = "\n".join(lines[:30]) or context[:1200]
+    return "Berikut jalur paling relevan berdasarkan data yang tersedia:\n\n" + summary + suffix
 
 
 def rag_chat(query: str, routes_data: list, api_key: str, 

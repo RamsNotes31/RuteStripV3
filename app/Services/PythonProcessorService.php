@@ -24,6 +24,9 @@ class PythonProcessorService
         $this->env = [
             'PATH'             => getenv('PATH'),
             'PYTHONIOENCODING' => 'utf-8',
+            'HF_HOME'          => storage_path('app/huggingface'),
+            'SENTENCE_TRANSFORMERS_HOME' => storage_path('app/huggingface/sentence-transformers'),
+            'TRANSFORMERS_CACHE' => storage_path('app/huggingface/transformers'),
             'USERPROFILE'      => getenv('USERPROFILE'),
             'USERNAME'         => getenv('USERNAME') ?: 'default',
             'USER'             => getenv('USERNAME') ?: 'default',

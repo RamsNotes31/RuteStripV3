@@ -17,10 +17,16 @@ import os
 import re
 import warnings
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HF_CACHE_DIR = os.path.join(PROJECT_ROOT, 'storage', 'app', 'huggingface')
+
 # Fix Windows network errors with HuggingFace Hub
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
 os.environ['HF_HUB_OFFLINE'] = '0'  # Try online first
 os.environ['TRANSFORMERS_OFFLINE'] = '0'
+os.environ.setdefault('HF_HOME', HF_CACHE_DIR)
+os.environ.setdefault('SENTENCE_TRANSFORMERS_HOME', os.path.join(HF_CACHE_DIR, 'sentence-transformers'))
+os.environ.setdefault('TRANSFORMERS_CACHE', os.path.join(HF_CACHE_DIR, 'transformers'))
 
 # Disable SSL verification issues on some Windows systems
 os.environ['CURL_CA_BUNDLE'] = ''
@@ -115,14 +121,32 @@ def preprocess_text(text: str, remove_stopwords: bool = True) -> str:
 # Global model cache
 _model = None
 
+def get_local_model_path():
+    """Return a downloaded SBERT snapshot path when available."""
+    model_dir = os.path.join(
+        HF_CACHE_DIR,
+        'sentence-transformers',
+        'models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2',
+    )
+    refs_main = os.path.join(model_dir, 'refs', 'main')
+    if os.path.exists(refs_main):
+        with open(refs_main, 'r', encoding='utf-8') as ref_file:
+            revision = ref_file.read().strip()
+        snapshot = os.path.join(model_dir, 'snapshots', revision)
+        if os.path.exists(os.path.join(snapshot, 'model.safetensors')):
+            return snapshot
+
+    return None
+
 def get_model():
     """Load SBERT model (cached) with fallback options"""
     global _model
     if _model is None:
         try:
             SentenceTransformer = get_sentence_transformer()
-            # Try loading the model
-            _model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+            local_model_path = get_local_model_path()
+            model_name = local_model_path or 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+            _model = SentenceTransformer(model_name)
         except Exception as e:
             error_msg = str(e)
             if 'WinError' in error_msg or '10106' in error_msg:
@@ -352,13 +376,11 @@ def mode_embed(query_text: str) -> dict:
     FAST mode: Generate embedding for query text only (no file processing)
     """
     try:
-        SentenceTransformer = get_sentence_transformer()
-        model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        
         # Preprocess query
         processed_query = preprocess_text(query_text, remove_stopwords=True)
         
         # Generate embedding
+        model = get_model()
         embedding = model.encode(processed_query).tolist()
         
         return {
@@ -412,4 +434,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
