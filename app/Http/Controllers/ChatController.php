@@ -138,7 +138,7 @@ class ChatController extends Controller
                 '--data-file', $dataFile,
                 '--api-key', $apiKey,
                 '--model', $geminiModel,
-                '--top-k', '5',
+                '--top-k', '3',
                 '--history-file', $historyFile,
             ];
 

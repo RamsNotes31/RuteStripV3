@@ -383,7 +383,12 @@ def generate_response_gemini(prompt: str, api_key: str, model_name: str = 'gemin
 
 def generate_response_without_gemini(prompt: str, error: str = "") -> str:
     """Fallback response when Gemini is not configured."""
-    suffix = f"\n\nCatatan sistem: Gemini belum aktif ({error})." if error else "\n\nCatatan sistem: Gemini belum aktif."
+    if "quota" in error.lower() or "429" in error:
+        msg = "Maaf, sistem sedang mencapai batas penggunaan API (Quota Limit). Silakan tunggu sebentar sebelum mencoba lagi."
+    else:
+        msg = f"Gemini belum aktif ({error})." if error else "Gemini belum aktif."
+    
+    suffix = f"\n\nCatatan sistem: {msg}"
     context_marker = "=== RETRIEVED CONTEXT (Data Jalur Pendakian) ==="
     question_marker = "=== PERTANYAAN PENGGUNA ==="
     context = prompt.split(context_marker, 1)[-1].split(question_marker, 1)[0].strip()
