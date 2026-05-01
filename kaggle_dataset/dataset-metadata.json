@@ -1,0 +1,18 @@
+{
+  "title": "RuteStrip Indonesian Hiking Routes GPX Features and SBERT Embeddings",
+  "id": "your-kaggle-username/rutestrip-indonesian-hiking-routes-gpx-sbert",
+  "licenses": [
+    {
+      "name": "CC0-1.0"
+    }
+  ],
+  "keywords": [
+    "hiking",
+    "gpx",
+    "indonesia",
+    "sbert",
+    "recommendation-system",
+    "nlp",
+    "mountain"
+  ]
+}

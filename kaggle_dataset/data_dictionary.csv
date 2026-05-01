@@ -1,0 +1,19 @@
+﻿column,description
+route_id,Unique route identifier from processed dataset.
+route_name,Cleaned hiking route name.
+original_name,Original processed file-derived route name.
+mountain,Inferred mountain name.
+province,Inferred Indonesian province or cross-province area where identifiable.
+distance_km,3D GPX track distance in kilometers.
+elevation_gain_m,Cumulative positive elevation gain in meters.
+naismith_duration_hour,Estimated hiking duration using Naismith rule: distance/5 + elevation_gain/600.
+average_grade_pct,Average route grade percentage: elevation_gain / distance_meters * 100.
+min_elevation_m,Minimum elevation found in GPX track points.
+max_elevation_m,Maximum elevation found in GPX track points.
+difficulty,"Route difficulty label derived from average grade: mudah, sedang, sulit, sangat sulit."
+total_trackpoints,Number of GPX track points used in processing.
+manual_description,Human-authored or curated route description where available.
+narrative_text,Combined text used for semantic embedding.
+embedding_model,SentenceTransformer model used to encode narrative text.
+embedding_dimension,Number of dimensions in the embedding vector.
+embedding_0..embedding_383,SBERT vector dimensions in rutestrip_hiking_route_embeddings.csv.
