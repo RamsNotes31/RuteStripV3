@@ -113,6 +113,7 @@
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
     </style>
+    @stack('styles')
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
     <!-- Navigation -->

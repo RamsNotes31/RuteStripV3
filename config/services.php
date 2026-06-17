@@ -39,4 +39,20 @@ return [
         'path' => env('PYTHON_PATH', 'python'),
     ],
 
+    'pinata'   => [
+        'jwt'         => env('PINATA_JWT'),
+        'api_url'     => env('PINATA_API_URL', 'https://api.pinata.cloud'),
+        'gateway_url' => rtrim(env('IPFS_GATEWAY_URL', 'https://gateway.pinata.cloud/ipfs/'), '/') . '/',
+    ],
+
+    'blockchain' => [
+        'rpc_url'          => env('BLOCKCHAIN_RPC_URL', 'http://127.0.0.1:8545'),
+        'private_key'      => env('BLOCKCHAIN_PRIVATE_KEY'),
+        'contract_address' => env('BLOCKCHAIN_CONTRACT_ADDRESS'),
+        'network'          => env('BLOCKCHAIN_NETWORK', 'localhost'),
+        'node_path'        => env('NODE_PATH', 'node'),
+        'etherscan_api_key' => env('ETHERSCAN_API_KEY'),
+        'etherscan_api_url' => env('ETHERSCAN_API_URL', 'https://api-sepolia.etherscan.io/api'),
+    ],
+
 ];

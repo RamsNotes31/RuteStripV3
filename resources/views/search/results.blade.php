@@ -119,6 +119,15 @@
                         @endif">
                         {{ $route->difficulty_level }}
                     </span>
+                    @if($route->activeGpxVersion)
+                    <span class="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold
+                        @if($route->activeGpxVersion->verification_status === 'verified') bg-emerald-100 text-emerald-800
+                        @elseif($route->activeGpxVersion->verification_status === 'invalid') bg-red-100 text-red-800
+                        @else bg-amber-100 text-amber-800
+                        @endif">
+                        GPX {{ strtoupper($route->activeGpxVersion->verification_status) }}
+                    </span>
+                    @endif
                 </div>
             </div>
 

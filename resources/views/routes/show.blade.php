@@ -36,6 +36,15 @@
                                 @endif shadow-sm">
                                 {{ $route->difficulty_level }}
                             </span>
+                            @if($route->activeGpxVersion)
+                            <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold mb-4 ml-2 shadow-sm
+                                @if($route->activeGpxVersion->verification_status === 'verified') bg-emerald-100 text-emerald-800
+                                @elseif($route->activeGpxVersion->verification_status === 'invalid') bg-red-100 text-red-800
+                                @else bg-amber-100 text-amber-800
+                                @endif">
+                                GPX v{{ $route->activeGpxVersion->version_number }}: {{ str_replace('_', ' ', ucfirst($route->activeGpxVersion->verification_status)) }}
+                            </span>
+                            @endif
                             <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 tracking-tight">{{ $route->name }}</h1>
                             <p class="text-emerald-100 font-medium">Diupload pada {{ $route->created_at->format('d M Y, H:i') }}</p>
                         </div>
@@ -226,7 +235,48 @@
                 </div>
             </div>
 
-            <!-- B. SIMILAR ROUTES (SIDEBAR MOVED UP) -->
+            <!-- B. GPX PROVENANCE -->
+            <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 p-6">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center justify-between">
+                    <span>GPX Provenance</span>
+                    <a href="{{ route('routes.provenance', $route) }}" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold">Lihat riwayat</a>
+                </h3>
+
+                @if($route->activeGpxVersion)
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500">Versi aktif</span>
+                        <span class="font-bold text-slate-800">v{{ $route->activeGpxVersion->version_number }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500">Status</span>
+                        <span class="px-2 py-1 rounded-lg text-xs font-bold
+                            @if($route->activeGpxVersion->verification_status === 'verified') bg-emerald-100 text-emerald-700
+                            @elseif($route->activeGpxVersion->verification_status === 'invalid') bg-red-100 text-red-700
+                            @else bg-amber-100 text-amber-700
+                            @endif">
+                            {{ str_replace('_', ' ', strtoupper($route->activeGpxVersion->verification_status)) }}
+                        </span>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs text-slate-600 space-y-1">
+                        <p><span class="font-bold text-slate-700">GPX:</span> {{ $route->activeGpxVersion->verification_status_explanation }}</p>
+                        <p><span class="font-bold text-slate-700">IPFS:</span> {{ $route->activeGpxVersion->ipfs_status_explanation }}</p>
+                        <p><span class="font-bold text-slate-700">Blockchain:</span> {{ $route->activeGpxVersion->blockchain_status_explanation }}</p>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block mb-1">SHA-256</span>
+                        <code class="block text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 break-all text-slate-700">{{ $route->activeGpxVersion->file_hash }}</code>
+                    </div>
+                    <a href="{{ route('routes.provenance.download-version', [$route, $route->activeGpxVersion]) }}" class="block w-full text-center py-3 rounded-2xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100">
+                        Download GPX Aktif
+                    </a>
+                </div>
+                @else
+                <p class="text-sm text-slate-500">Belum ada metadata provenance untuk GPX ini.</p>
+                @endif
+            </div>
+
+            <!-- C. SIMILAR ROUTES (SIDEBAR MOVED UP) -->
             @if($similarRoutes->count() > 0)
             <div class="bg-emerald-600 rounded-3xl shadow-xl overflow-hidden text-white relative">
                 <div class="absolute inset-x-0 top-0 h-32 bg-white/10 skew-y-6 origin-bottom-left blur-2xl"></div>

@@ -104,6 +104,16 @@ class HikingRoute extends Model
         return $this->hasMany(Favorite::class);
     }
 
+    public function gpxVersions()
+    {
+        return $this->hasMany(GpxVersion::class);
+    }
+
+    public function activeGpxVersion()
+    {
+        return $this->hasOne(GpxVersion::class)->where('is_active', true);
+    }
+
     /**
      * Get average rating
      */

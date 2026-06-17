@@ -361,7 +361,6 @@ def generate_response_gemini(prompt: str, api_key: str, model_name: str = 'gemin
 
     try:
         import google.generativeai as genai
-        
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name)
         

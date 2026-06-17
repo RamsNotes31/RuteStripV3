@@ -19,6 +19,27 @@
         </a>
     </div>
 
+    @php
+        $filterOptions = [
+            '' => 'Semua Rute',
+            'verified' => 'Verified',
+            'missing_ipfs' => 'Belum IPFS',
+            'missing_blockchain' => 'Belum Blockchain',
+            'invalid' => 'Invalid',
+        ];
+    @endphp
+    <div class="bg-white rounded-2xl shadow border border-slate-100 p-4 mb-8">
+        <p class="text-sm font-bold text-slate-700 mb-3">Filter Provenance</p>
+        <div class="flex flex-wrap gap-2">
+            @foreach($filterOptions as $value => $label)
+            <a href="{{ route('routes.index', $value ? ['provenance_filter' => $value] : []) }}"
+               class="px-4 py-2 rounded-xl text-sm font-bold transition-colors {{ ($filter ?? '') === $value ? 'bg-emerald-700 text-white' : 'bg-slate-50 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                {{ $label }}
+            </a>
+            @endforeach
+        </div>
+    </div>
+
     @if($routes->isEmpty())
     <div class="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center">
         <svg class="w-20 h-20 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,14 +85,43 @@
                 <!-- Title on Image/Map -->
                 <div class="absolute bottom-0 left-0 right-0 p-4 z-10">
                     <h3 class="text-xl font-bold text-white mb-2 line-clamp-2 drop-shadow-lg">{{ $route->name }}</h3>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                        @if($route->difficulty_level === 'Mudah') bg-green-100 text-green-800
-                        @elseif($route->difficulty_level === 'Sedang') bg-yellow-100 text-yellow-800
-                        @elseif($route->difficulty_level === 'Sulit') bg-orange-100 text-orange-800
-                        @else bg-red-100 text-red-800
-                        @endif">
-                        {{ $route->difficulty_level }}
-                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                            @if($route->difficulty_level === 'Mudah') bg-green-100 text-green-800
+                            @elseif($route->difficulty_level === 'Sedang') bg-yellow-100 text-yellow-800
+                            @elseif($route->difficulty_level === 'Sulit') bg-orange-100 text-orange-800
+                            @else bg-red-100 text-red-800
+                            @endif">
+                            {{ $route->difficulty_level }}
+                        </span>
+                        @if($route->activeGpxVersion)
+                        @php
+                            $ipfsStatus = $route->activeGpxVersion->ipfs_status ?? 'pending_ipfs';
+                            $blockchainStatus = $route->activeGpxVersion->blockchain_status ?? 'pending_blockchain';
+                        @endphp
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
+                            @if($route->activeGpxVersion->verification_status === 'verified') bg-emerald-100 text-emerald-800
+                            @elseif($route->activeGpxVersion->verification_status === 'invalid') bg-red-100 text-red-800
+                            @else bg-amber-100 text-amber-800
+                            @endif">
+                            GPX {{ strtoupper($route->activeGpxVersion->verification_status) }}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
+                            @if($ipfsStatus === 'uploaded_ipfs') bg-purple-100 text-purple-800
+                            @elseif($ipfsStatus === 'failed_ipfs') bg-red-100 text-red-800
+                            @else bg-amber-100 text-amber-800
+                            @endif">
+                            {{ strtoupper(str_replace('_', ' ', $ipfsStatus)) }}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
+                            @if($blockchainStatus === 'registered_blockchain') bg-slate-800 text-white
+                            @elseif($blockchainStatus === 'failed_blockchain') bg-red-100 text-red-800
+                            @else bg-amber-100 text-amber-800
+                            @endif">
+                            {{ strtoupper(str_replace('_', ' ', $blockchainStatus)) }}
+                        </span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -103,12 +153,22 @@
                     </div>
                 </div>
 
+                @if($route->activeGpxVersion)
+                <div class="mb-4 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs text-slate-600 space-y-1">
+                    <p><span class="font-bold text-slate-700">GPX:</span> {{ $route->activeGpxVersion->verification_status_explanation }}</p>
+                    <p><span class="font-bold text-slate-700">IPFS:</span> {{ $route->activeGpxVersion->ipfs_status_explanation }}</p>
+                    <p><span class="font-bold text-slate-700">Blockchain:</span> {{ $route->activeGpxVersion->blockchain_status_explanation }}</p>
+                </div>
+                @endif
+
                 <!-- Actions -->
                 <div class="flex gap-2">
                     <a href="{{ route('routes.show', $route) }}"
                        class="flex-1 py-2 text-center bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium rounded-xl transition-colors">
                         Detail
                     </a>
+                    @auth
+                    @if(Auth::user()->isAdmin())
                     <form action="{{ route('routes.destroy', $route) }}" method="POST"
                           onsubmit="return confirm('Yakin ingin menghapus rute ini?')">
                         @csrf
@@ -120,6 +180,8 @@
                             </svg>
                         </button>
                     </form>
+                    @endif
+                    @endauth
                 </div>
             </div>
         </div>

@@ -5,6 +5,7 @@ use App\Models\Comment;
 use App\Models\Favorite;
 use App\Models\HikingRoute;
 use App\Models\Rating;
+use App\Services\GpxVersionService;
 use App\Services\PythonProcessorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,19 +14,34 @@ use Illuminate\Support\Facades\Storage;
 class RouteController extends Controller
 {
     private PythonProcessorService $pythonService;
+    private GpxVersionService $gpxVersionService;
 
-    public function __construct(PythonProcessorService $pythonService)
+    public function __construct(PythonProcessorService $pythonService, GpxVersionService $gpxVersionService)
     {
-        $this->pythonService = $pythonService;
+        $this->pythonService      = $pythonService;
+        $this->gpxVersionService = $gpxVersionService;
     }
 
     /**
      * Display a listing of hiking routes
      */
-    public function index()
+    public function index(Request $request)
     {
-        $routes = HikingRoute::latest()->paginate(12);
-        return view('routes.index', compact('routes'));
+        $filter = $request->query('provenance_filter');
+
+        $routesQuery = HikingRoute::with('activeGpxVersion')->latest();
+
+        match ($filter) {
+            'missing_ipfs' => $routesQuery->whereHas('activeGpxVersion', fn($query) => $query->where('ipfs_status', 'pending_ipfs')),
+            'missing_blockchain' => $routesQuery->whereHas('activeGpxVersion', fn($query) => $query->where('blockchain_status', 'pending_blockchain')),
+            'invalid' => $routesQuery->whereHas('activeGpxVersion', fn($query) => $query->where('verification_status', 'invalid')),
+            'verified' => $routesQuery->whereHas('activeGpxVersion', fn($query) => $query->where('verification_status', 'verified')),
+            default => null,
+        };
+
+        $routes = $routesQuery->paginate(12)->withQueryString();
+
+        return view('routes.index', compact('routes', 'filter'));
     }
 
     /**
@@ -45,6 +61,7 @@ class RouteController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'gpx_file'    => 'required|file|max:10240', // Max 10MB
+            'change_log'  => 'nullable|string|max:1000',
         ]);
 
         // Validate file extension
@@ -83,6 +100,13 @@ class RouteController extends Controller
                 'sbert_embedding'        => $result['embedding'] ?? null,
             ]);
 
+            $this->gpxVersionService->createInitialVersion(
+                $route,
+                $filePath,
+                Auth::id(),
+                $request->input('change_log')
+            );
+
             return redirect()->route('routes.index')
                 ->with('success', 'Jalur pendakian berhasil ditambahkan!');
 
@@ -100,6 +124,7 @@ class RouteController extends Controller
      */
     public function show(HikingRoute $route)
     {
+        $route->load(['activeGpxVersion', 'gpxVersions.uploader']);
         $similarRoutes = collect([]);
 
         // Calculate similar routes using cosine similarity
@@ -108,6 +133,7 @@ class RouteController extends Controller
 
             $allRoutes = HikingRoute::where('id', '!=', $route->id)
                 ->whereNotNull('sbert_embedding')
+                ->with('activeGpxVersion')
                 ->get();
 
             $similarRoutes = $allRoutes->map(function ($otherRoute) use ($routeEmbedding) {
@@ -144,8 +170,9 @@ class RouteController extends Controller
      */
     public function destroy(HikingRoute $route)
     {
-        // Delete GPX file
-        Storage::disk('public')->delete($route->gpx_file_path);
+        abort_unless(Auth::check() && Auth::user()->isAdmin(), 403);
+
+        $this->gpxVersionService->deleteFilesForRoute($route);
 
         $route->delete();
 
@@ -205,7 +232,7 @@ class RouteController extends Controller
                 }
 
                 // Create hiking route record
-                HikingRoute::create([
+                $route = HikingRoute::create([
                     'name'                   => $routeName,
                     'gpx_file_path'          => $filePath,
                     'route_coordinates'      => $result['route_coordinates'] ?? null,
@@ -216,6 +243,13 @@ class RouteController extends Controller
                     'narrative_text'         => $result['narrative_text'] ?? null,
                     'sbert_embedding'        => $result['embedding'] ?? null,
                 ]);
+
+                $this->gpxVersionService->createInitialVersion(
+                    $route,
+                    $filePath,
+                    Auth::id(),
+                    'Initial GPX upload from batch import.'
+                );
 
                 $results['success'][] = $originalName;
 

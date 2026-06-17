@@ -71,6 +71,24 @@
                 @enderror
             </div>
 
+            <!-- Change Log -->
+            <div class="mb-6">
+                <label for="change_log" class="block text-sm font-semibold text-slate-700 mb-2">
+                    Catatan Provenance <span class="text-slate-400 font-normal">(Opsional)</span>
+                </label>
+                <textarea name="change_log"
+                          id="change_log"
+                          rows="3"
+                          class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all resize-none"
+                          placeholder="Contoh: Upload awal dataset GPX dari tracking lapangan via aplikasi GPS.">{{ old('change_log') }}</textarea>
+                <p class="mt-2 text-xs text-slate-500">
+                    Catatan ini akan muncul di riwayat provenance GPX untuk kebutuhan audit dan paper.
+                </p>
+                @error('change_log')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
             <!-- GPX File Upload -->
             <div class="mb-8">
                 <label for="gpx_file" class="block text-sm font-semibold text-slate-700 mb-2">

@@ -39,7 +39,7 @@ class SearchController extends Controller
 
         // Get all routes with embeddings (cached for 5 minutes)
         $routes = Cache::remember('routes_with_embeddings', 300, function () {
-            return HikingRoute::whereNotNull('sbert_embedding')->get();
+            return HikingRoute::whereNotNull('sbert_embedding')->with('activeGpxVersion')->get();
         });
 
         if ($routes->isEmpty()) {
