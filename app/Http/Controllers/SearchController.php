@@ -54,8 +54,13 @@ class SearchController extends Controller
             // Get query embedding from Python (one-time call)
             $queryEmbedding = $this->pythonService->getQueryEmbedding($query);
 
+            if (! is_array($queryEmbedding) || empty($queryEmbedding)) {
+                throw new \RuntimeException('Embedding query kosong atau tidak valid.');
+            }
+
             // Calculate cosine similarity in PHP (FAST!)
-            $results = $routes->map(function ($route) use ($queryEmbedding) {
+            $results = $routes->filter(fn($route) => is_array($route->sbert_embedding) && ! empty($route->sbert_embedding))
+                ->map(function ($route) use ($queryEmbedding) {
                 $similarity              = $this->cosineSimilarity($queryEmbedding, $route->sbert_embedding);
                 $route->similarity_score = round($similarity * 100, 1);
                 $route->cosine_value     = round($similarity, 4);
@@ -82,7 +87,7 @@ class SearchController extends Controller
                 'searchTime' => $searchTime,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->withErrors(['query' => 'Gagal melakukan pencarian: ' . $e->getMessage()])
                 ->withInput();
         }
