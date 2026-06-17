@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -10,6 +11,7 @@ class PythonProcessorService
     private array $pythonCommand;
     private string $scriptPath;
     private array $env;
+    private ?string $processorUrl;
 
     public function __construct()
     {
@@ -19,6 +21,7 @@ class PythonProcessorService
         $this->pythonCommand = [$pythonExecutable];
 
         $this->scriptPath = base_path('python/processor.py');
+        $this->processorUrl = config('services.python.processor_url');
 
         // Setup environment - copy all necessary Windows env vars
         $this->env = [
@@ -52,11 +55,42 @@ class PythonProcessorService
         return $process;
     }
 
+    private function usesRemoteProcessor(): bool
+    {
+        return filled($this->processorUrl);
+    }
+
+    private function remoteUrl(string $path): string
+    {
+        return rtrim($this->processorUrl, '/') . '/' . ltrim($path, '/');
+    }
+
+    private function validateRemoteResponse(array $result): array
+    {
+        if (! ($result['success'] ?? false)) {
+            throw new \Exception($result['error'] ?? 'Remote Python processor failed');
+        }
+
+        return $result;
+    }
+
     /**
      * Process GPX file and extract features + embeddings
      */
     public function ingest(string $gpxFilePath): array
     {
+        if ($this->usesRemoteProcessor()) {
+            $response = Http::timeout(300)
+                ->attach('gpx_file', fopen($gpxFilePath, 'r'), basename($gpxFilePath))
+                ->post($this->remoteUrl('/ingest'));
+
+            if ($response->failed()) {
+                throw new \Exception('Remote Python ingest failed: HTTP ' . $response->status());
+            }
+
+            return $this->validateRemoteResponse($response->json() ?? []);
+        }
+
         $process = $this->createProcess([
             '--mode', 'ingest',
             '--gpx', $gpxFilePath,
@@ -85,6 +119,19 @@ class PythonProcessorService
      */
     public function search(string $query, array $routesData): array
     {
+        if ($this->usesRemoteProcessor()) {
+            $response = Http::timeout(300)->post($this->remoteUrl('/search'), [
+                'query' => $query,
+                'routes' => $routesData,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception('Remote Python search failed: HTTP ' . $response->status());
+            }
+
+            return $this->validateRemoteResponse($response->json() ?? []);
+        }
+
         // Write data to temp file to avoid command line length limits
         $tempFile = tempnam(sys_get_temp_dir(), 'rutestrip_search_');
         file_put_contents($tempFile, json_encode($routesData));
@@ -122,6 +169,19 @@ class PythonProcessorService
      */
     public function getQueryEmbedding(string $query): array
     {
+        if ($this->usesRemoteProcessor()) {
+            $response = Http::timeout(300)->post($this->remoteUrl('/embed'), [
+                'query' => $query,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception('Remote Python embed failed: HTTP ' . $response->status());
+            }
+
+            $result = $this->validateRemoteResponse($response->json() ?? []);
+            return $result['embedding'] ?? [];
+        }
+
         $process = $this->createProcess([
             '--mode', 'embed',
             '--query', $query,

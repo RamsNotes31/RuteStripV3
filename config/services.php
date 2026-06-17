@@ -36,7 +36,8 @@ return [
     ],
 
     'python'   => [
-        'path' => env('PYTHON_PATH', 'python'),
+        'path'          => env('PYTHON_PATH', 'python'),
+        'processor_url' => env('PYTHON_PROCESSOR_URL'),
     ],
 
     'pinata'   => [
